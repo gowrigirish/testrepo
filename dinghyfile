@@ -1,0 +1,467 @@
+{
+  "expectedArtifacts": [
+    {
+      "defaultArtifact": {
+        "artifactAccount": "spinnaker-manifests",
+        "reference": "s3://secrets.gyg.io/spinnaker/charts/traveler-aggregator-pop/${parameters.version}/production.tgz",
+        "type": "s3/object"
+      },
+      "displayName": "helm-chart",
+      "id": "31e7418b-f0b4-4d07-be8d-642bec272ce6",
+      "matchArtifact": {
+        "artifactAccount": "spinnaker-manifests",
+        "type": "s3/object"
+      },
+      "useDefaultArtifact": true,
+      "usePriorArtifact": false
+    }
+  ],
+  "keepWaitingPipelines": false,
+  "lastModifiedBy": "anonymous",
+  "limitConcurrent": true,
+  "locked": {
+    "allowUnlockUi": true,
+    "ui": true
+  },
+  "parallel": false,
+  "parameterConfig": [
+    {
+      "default": "traveler-aggregator-pop",
+      "description": "",
+      "hasOptions": false,
+      "label": "",
+      "name": "namespace",
+      "options": [
+        {
+          "value": ""
+        }
+      ],
+      "pinned": false,
+      "required": true
+    },
+    {
+      "default": "",
+      "description": "",
+      "hasOptions": false,
+      "label": "",
+      "name": "cluster",
+      "options": [
+        {
+          "value": ""
+        }
+      ],
+      "pinned": true,
+      "required": true
+    },
+    {
+      "default": "traveler-aggregator-pop",
+      "description": "",
+      "hasOptions": false,
+      "label": "",
+      "name": "service",
+      "options": [
+        {
+          "value": ""
+        }
+      ],
+      "pinned": false,
+      "required": true
+    },
+    {
+      "default": "",
+      "description": "",
+      "hasOptions": false,
+      "label": "",
+      "name": "version",
+      "options": [
+        {
+          "value": ""
+        }
+      ],
+      "pinned": true,
+      "required": true
+    },
+    {
+      "default": "",
+      "description": "",
+      "hasOptions": false,
+      "label": "",
+      "name": "author",
+      "options": [
+        {
+          "value": ""
+        }
+      ],
+      "pinned": true,
+      "required": false
+    }
+  ],
+  "spelEvaluator": "",
+  "stages": [
+    {
+      "account": "spinnaker-${parameters.cluster}",
+      "cloudProvider": "kubernetes",
+      "manifests": [
+        {
+          "apiVersion": "v1",
+          "kind": "Namespace",
+          "metadata": {
+            "labels": {
+              "istio-injection": "enabled"
+            },
+            "name": "${parameters.namespace}"
+          }
+        }
+      ],
+      "moniker": {
+        "app": "traveler-aggregator-pop"
+      },
+      "name": "Create Namespace",
+      "refId": "1",
+      "requisiteStageRefIds": [],
+      "skipExpressionEvaluation": false,
+      "source": "text",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": false,
+          "services": []
+        }
+      },
+      "type": "deployManifest"
+    },
+    {
+      "account": "spinnaker-${parameters.cluster}",
+      "app": "traveler-aggregator-pop",
+      "cloudProvider": "kubernetes",
+      "expectedArtifacts": [],
+      "location": "${parameters.namespace}",
+      "manifestName": "deployment ${parameters.service}",
+      "mode": "static",
+      "name": "Get Baseline Version",
+      "refId": "13",
+      "requisiteStageRefIds": [
+        "1"
+      ],
+      "type": "findArtifactsFromResource"
+    },
+    {
+      "failOnFailedExpressions": true,
+      "name": "Set Baseline version",
+      "refId": "14",
+      "requisiteStageRefIds": [
+        "13"
+      ],
+      "type": "evaluateVariables",
+      "variables": [
+        {
+          "key": "baseline_version",
+          "value": "${#stage('Get Baseline Version').context['artifacts'][0]['reference'].split(':')[1]}"
+        }
+      ]
+    },
+    {
+      "evaluateOverrideExpressions": true,
+      "expectedArtifacts": [
+        {
+          "defaultArtifact": {
+            "customKind": true
+          },
+          "displayName": "manifests-baseline",
+          "id": "3ea1b96a-79c5-4172-bcc6-2105903432a9",
+          "matchArtifact": {
+            "name": "${parameters.service}",
+            "type": "embedded/base64"
+          },
+          "useDefaultArtifact": false,
+          "usePriorArtifact": false
+        }
+      ],
+      "inputArtifacts": [
+        {
+          "account": "spinnaker-manifests",
+          "id": "31e7418b-f0b4-4d07-be8d-642bec272ce6"
+        }
+      ],
+      "name": "Bake Baseline",
+      "namespace": "${parameters.namespace}",
+      "outputName": "${parameters.service}",
+      "overrides": {
+        "canary": "true",
+        "canary_name": "${parameters.service}-baseline",
+        "canary_stage": "baseline",
+        "canary_version": "baseline-${baseline_version.replace('.', '-')}",
+        "cluster": "${parameters.cluster}",
+        "namespace": "${parameters.namespace}",
+        "single_replica": "true",
+        "version": "${baseline_version}"
+      },
+      "rawOverrides": true,
+      "refId": "3",
+      "requisiteStageRefIds": [
+        "14"
+      ],
+      "templateRenderer": "HELM2",
+      "type": "bakeManifest"
+    },
+    {
+      "account": "spinnaker-${parameters.cluster}",
+      "cloudProvider": "kubernetes",
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "failPipeline": false,
+      "manifestArtifactAccount": "embedded-artifact",
+      "manifestArtifactId": "3ea1b96a-79c5-4172-bcc6-2105903432a9",
+      "moniker": {
+        "app": "traveler-aggregator-pop"
+      },
+      "name": "Deploy Baseline",
+      "refId": "7",
+      "requiredArtifactIds": [],
+      "requiredArtifacts": [],
+      "requisiteStageRefIds": [
+        "3"
+      ],
+      "skipExpressionEvaluation": true,
+      "source": "artifact",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": false,
+          "services": []
+        }
+      },
+      "type": "deployManifest"
+    },
+    {
+      "evaluateOverrideExpressions": true,
+      "expectedArtifacts": [
+        {
+          "defaultArtifact": {
+            "customKind": true
+          },
+          "displayName": "manifests-canary",
+          "id": "b010e023-f3d6-4490-8a15-326a1fb0e94e",
+          "matchArtifact": {
+            "name": "${parameters.service}",
+            "type": "embedded/base64"
+          },
+          "useDefaultArtifact": false,
+          "usePriorArtifact": false
+        }
+      ],
+      "inputArtifacts": [
+        {
+          "account": "spinnaker-manifests",
+          "id": "31e7418b-f0b4-4d07-be8d-642bec272ce6"
+        }
+      ],
+      "name": "Bake Canary",
+      "namespace": "${parameters.namespace}",
+      "outputName": "${parameters.service}",
+      "overrides": {
+        "canary": "true",
+        "canary_name": "${parameters.service}-canary",
+        "canary_stage": "canary",
+        "canary_version": "canary-${parameters.version.replace('.', '-')}",
+        "cluster": "${parameters.cluster}",
+        "namespace": "${parameters.namespace}",
+        "single_replica": "true",
+        "version": "${parameters.version}"
+      },
+      "rawOverrides": true,
+      "refId": "2",
+      "requisiteStageRefIds": [
+        "1"
+      ],
+      "templateRenderer": "HELM2",
+      "type": "bakeManifest"
+    },
+    {
+      "account": "spinnaker-${parameters.cluster}",
+      "cloudProvider": "kubernetes",
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "failPipeline": false,
+      "manifestArtifactAccount": "embedded-artifact",
+      "manifestArtifactId": "b010e023-f3d6-4490-8a15-326a1fb0e94e",
+      "moniker": {
+        "app": "traveler-aggregator-pop"
+      },
+      "name": "Deploy Canary",
+      "refId": "6",
+      "requiredArtifactIds": [],
+      "requiredArtifacts": [],
+      "requisiteStageRefIds": [
+        "2"
+      ],
+      "skipExpressionEvaluation": false,
+      "source": "artifact",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": false,
+          "services": []
+        }
+      },
+      "type": "deployManifest"
+    },
+    {
+      "evaluateOverrideExpressions": true,
+      "expectedArtifacts": [
+        {
+          "defaultArtifact": {
+            "customKind": true
+          },
+          "displayName": "manifests-live",
+          "id": "b6eeeeee-fe0f-40bd-b59c-f4853c2c6efb",
+          "matchArtifact": {
+            "name": "${parameters.service}",
+            "type": "embedded/base64"
+          },
+          "useDefaultArtifact": false,
+          "usePriorArtifact": false
+        }
+      ],
+      "inputArtifacts": [
+        {
+          "account": "spinnaker-manifests",
+          "id": "31e7418b-f0b4-4d07-be8d-642bec272ce6"
+        }
+      ],
+      "name": "Bake Live",
+      "namespace": "${parameters.namespace}",
+      "outputName": "${parameters.service}",
+      "overrides": {
+        "canary": "false",
+        "cluster": "${parameters.cluster}",
+        "namespace": "${parameters.namespace}",
+        "version": "${parameters.version}"
+      },
+      "rawOverrides": true,
+      "refId": "5",
+      "requisiteStageRefIds": [
+        "1"
+      ],
+      "templateRenderer": "HELM2",
+      "type": "bakeManifest"
+    },
+    {
+      "analysisType": "realTime",
+      "canaryConfig": {
+        "baselineAnalysisOffsetInMins": "0",
+        "beginCanaryAnalysisAfterMins": "0",
+        "canaryAnalysisIntervalMins": "5",
+        "canaryConfigId": "962881b7-6eda-4a18-911c-09b60a16fc0a",
+        "lifetimeDuration": "PT0H5M",
+        "metricsAccountName": "datadog-production",
+        "scopes": [
+          {
+            "controlScope": "${'destination_version:baseline-' + baseline_version.replace('.', '-')},response_code:500,destination_app:traveler-aggregator-pop",
+            "experimentScope": "${'destination_version:canary-' + parameters.version.replace('.', '-')},response_code:500,destination_app:traveler-aggregator-pop",
+            "extendedScopeParams": {},
+            "scopeName": "default"
+          }
+        ],
+        "scoreThresholds": {
+          "marginal": "75",
+          "pass": "95"
+        },
+        "storageAccountName": "aws-canary"
+      },
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "failOnFailedExpressions": false,
+      "failPipeline": false,
+      "name": "Run Canary Analysis",
+      "refId": "8",
+      "requisiteStageRefIds": [
+        "6",
+        "7"
+      ],
+      "restrictExecutionDuringTimeWindow": false,
+      "stageEnabled": {
+        "expression": "${#stage(\"Deploy Baseline\").status.toString()=='SUCCEEDED' AND #stage(\"Deploy Canary\").status.toString()=='SUCCEEDED'}",
+        "type": "expression"
+      },
+      "type": "kayentaCanary"
+    },
+    {
+      "completeOtherBranchesThenFail": true,
+      "continuePipeline": false,
+      "failPipeline": false,
+      "name": "Check Canary Analysis",
+      "preconditions": [
+        {
+          "context": {
+            "stageName": "Run Canary Analysis",
+            "stageStatus": "SUCCEEDED"
+          },
+          "failPipeline": true,
+          "type": "stageStatus"
+        }
+      ],
+      "refId": "12",
+      "requisiteStageRefIds": [
+        "8"
+      ],
+      "type": "checkPreconditions"
+    },
+    {
+      "application": "traveler-aggregator-pop",
+      "completeOtherBranchesThenFail": true,
+      "continuePipeline": false,
+      "failPipeline": false,
+      "name": "Trigger Cleanup",
+      "pipeline": "865a40c2-29e2-4cab-9905-c4c174ce7edb",
+      "pipelineParameters": {},
+      "refId": "15",
+      "requisiteStageRefIds": [
+        "12"
+      ],
+      "type": "pipeline",
+      "waitForCompletion": true
+    },
+    {
+      "account": "spinnaker-${parameters.cluster}",
+      "cloudProvider": "kubernetes",
+      "manifestArtifactAccount": "embedded-artifact",
+      "manifestArtifactId": "b6eeeeee-fe0f-40bd-b59c-f4853c2c6efb",
+      "moniker": {
+        "app": "traveler-aggregator-pop"
+      },
+      "name": "Deploy Live",
+      "refId": "11",
+      "requiredArtifactIds": [],
+      "requiredArtifacts": [],
+      "requisiteStageRefIds": [
+        "5",
+        "12"
+      ],
+      "skipExpressionEvaluation": false,
+      "source": "artifact",
+      "trafficManagement": {
+        "enabled": false,
+        "options": {
+          "enableTraffic": false,
+          "services": []
+        }
+      },
+      "type": "deployManifest"
+    }
+  ],
+  "triggers": [
+    {
+      "enabled": false,
+      "payloadConstraints": {
+        "application": "^traveler-aggregator-pop$",
+        "environment": "production",
+        "secret": "dronesecret"
+      },
+      "source": "drone",
+      "type": "webhook"
+    }
+  ],
+  "updateTs": "1617090483000"
+}
+
