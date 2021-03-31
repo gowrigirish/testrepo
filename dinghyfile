@@ -394,7 +394,7 @@
       "preconditions": [
         {
           "context": {
-            "stageName": "Run Canary Analysis",
+            "stageName": "Run Canary Analysis 1",
             "stageStatus": "SUCCEEDED"
           },
           "failPipeline": true,
