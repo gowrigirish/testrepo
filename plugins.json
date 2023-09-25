@@ -1,5 +1,5 @@
 [
-  {
+{
 "id": "Armory.EventFilter",
 "description": "This plugin adds echo event filter capabilities.",
 "provider": "https://github.com/armory-io",
